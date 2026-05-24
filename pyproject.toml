@@ -9,35 +9,30 @@ dependencies = [
     "langchain>=0.3.0",
     "langgraph>=0.2.0",
     "langchain-google-genai>=2.0.0",
-
     # YouTube & Media
     "youtube-transcript-api>=0.6.2",
     "yt-dlp>=2024.1.1",
     "faster-whisper>=1.0.0",
-
     # Document Fetching
     "requests>=2.31.0",
     "beautifulsoup4>=4.12.0",
     "pymupdf>=1.24.0",
-
     # Google APIs
     "google-api-python-client>=2.100.0",
     "google-auth-httplib2>=0.2.0",
     "google-auth-oauthlib>=1.1.0",
-
     # Notion
     "notion-client>=2.2.1",
-
     # Language
     "langdetect>=1.0.9",
     "deep-translator>=1.11.4",
-
     # Core Utilities
     "python-dotenv>=1.0.0",
     "rich>=13.7.0",
     "pydantic>=2.5.0",
     "tiktoken>=0.7.0",
     "loguru>=0.7.0",
+    "graphifyy>=0.8.17",
 ]
 
 [project.optional-dependencies]

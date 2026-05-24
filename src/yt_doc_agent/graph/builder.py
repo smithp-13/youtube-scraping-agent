@@ -1,10 +1,11 @@
 """
-LangGraph Orchestration — builds the CompiledGraph StateGraph wiring all nodes and edges.
+LangGraph Orchestration — builds the CompiledStateGraph StateGraph wiring all nodes and edges.
 """
 
+from typing import Union
 from loguru import logger
 from langgraph.graph import StateGraph, END
-from langgraph.graph.state import CompiledGraph
+from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Send
 from langgraph.checkpoint.memory import MemorySaver
 from yt_doc_agent.core.state import GraphState
@@ -25,30 +26,49 @@ from yt_doc_agent.agents import (
 )
 
 
-def map_chapters(state: GraphState):
-    """Map over chapters to spawn parallel section writer workers."""
-    chapters = state.get("chapters", [])
-    if not chapters:
-        # If no chapters for some reason, skip to assembler
-        return "assembler"
-        
+def _route_cache(state: GraphState) -> str:
+    """Route after cache_check: short-circuit on HIT."""
+    return END if state.get("cache_hit") else "url_resolver"
+
+
+def _route_url(state: GraphState) -> str:
+    """Route after url_resolver: playlist needs selection step."""
+    return "playlist_handler" if state.get("is_playlist") else "ingestion"
+
+
+def _route_description(state: GraphState) -> str:
+    """Route after description_parser: skip doc pipeline when no links found."""
+    return "chapter_architect" if state.get("skip_document_pipeline") else "document_fetcher"
+
+
+def map_chapters(state: GraphState) -> list[Send]:
+    """
+    Map over chapters to spawn parallel section_writer workers.
+
+    Always send a slim dict — not the full GraphState. Only the fields
+    section_writer.run() actually needs are included. This keeps memory usage
+    proportional to chapter count rather than duplicating the entire state.
+    """
+    chapters = state.get("chapters", []) or []
+
     return [
         Send(
             "section_writer",
             {
                 "chapter": ch,
                 "video_title": state.get("video_title", ""),
-                "fetched_documents": state.get("fetched_documents", [])
-            }
+                "fetched_documents": state.get("fetched_documents", []),
+                "working_transcript": state.get("working_transcript", ""),
+            },
         )
         for ch in chapters
     ]
 
 
-def build_graph() -> CompiledGraph:
+def build_graph() -> CompiledStateGraph:
     """
     Build and compile the multi-agent StateGraph.
-    
+
     Flow:
       1.  cache_check: HIT -> END, MISS -> url_resolver
       2.  url_resolver: PLAYLIST -> playlist_handler, SINGLE -> ingestion
@@ -60,6 +80,7 @@ def build_graph() -> CompiledGraph:
       8.  section_writer -> assembler -> cache_writer -> END
     """
     logger.info("Initializing StateGraph builder...")
+
     workflow = StateGraph(GraphState)
 
     # ── Register Agent Nodes ───────────────────────────────────────────────
@@ -81,25 +102,25 @@ def build_graph() -> CompiledGraph:
     workflow.set_entry_point("cache_check")
 
     # ── Conditional Edges ──────────────────────────────────────────────────
-    
+
     # 1. cache_check -> END on cache hit, otherwise to url_resolver
     workflow.add_conditional_edges(
         "cache_check",
-        lambda s: "end" if s.cache_hit else "url_resolver",
+        _route_cache,
         {
-            "end": END,
-            "url_resolver": "url_resolver"
-        }
+            END: END,
+            "url_resolver": "url_resolver",
+        },
     )
 
     # 2. url_resolver -> playlist_handler if playlist URL, otherwise ingestion
     workflow.add_conditional_edges(
         "url_resolver",
-        lambda s: "playlist_handler" if s.is_playlist else "ingestion",
+        _route_url,
         {
             "playlist_handler": "playlist_handler",
-            "ingestion": "ingestion"
-        }
+            "ingestion": "ingestion",
+        },
     )
 
     # 3. playlist_handler always advances to ingestion
@@ -110,14 +131,14 @@ def build_graph() -> CompiledGraph:
     workflow.add_edge("transcript", "language")
     workflow.add_edge("language", "description_parser")
 
-    # 5. description_parser -> skipped document fetcher if no docs, otherwise to fetcher
+    # 5. description_parser -> skip document fetcher if no docs, otherwise fetcher
     workflow.add_conditional_edges(
         "description_parser",
-        lambda s: "chapter_architect" if s.skip_document_pipeline else "document_fetcher",
+        _route_description,
         {
             "document_fetcher": "document_fetcher",
-            "chapter_architect": "chapter_architect"
-        }
+            "chapter_architect": "chapter_architect",
+        },
     )
 
     # 6. Document pipeline links back to chapter architect
@@ -128,8 +149,9 @@ def build_graph() -> CompiledGraph:
     workflow.add_conditional_edges(
         "chapter_architect",
         map_chapters,
-        ["section_writer", "assembler"]
+        ["section_writer"],
     )
+
     workflow.add_edge("section_writer", "assembler")
     workflow.add_edge("assembler", "cache_writer")
     workflow.add_edge("cache_writer", END)

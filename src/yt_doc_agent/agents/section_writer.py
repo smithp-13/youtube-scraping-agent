@@ -34,7 +34,7 @@ def run(state: dict) -> dict:
     """
     Generate professional Markdown documentation for a single chapter.
     This is designed to be run in parallel via LangGraph's Send API.
-    Expected state: {"chapter": Chapter, "video_title": str, "fetched_documents": List[DocumentScore]}
+    Expected state: {"chapter": Chapter, "video_title": str, "fetched_documents": List[DocumentScore], "working_transcript": str}
     """
     chapter = state.get("chapter")
     if not chapter:
@@ -44,6 +44,7 @@ def run(state: dict) -> dict:
 
     video_title = state.get("video_title", "Unknown Title")
     fetched_documents = state.get("fetched_documents", [])
+    working_transcript = state.get("working_transcript", "")
     
     console.print(f"[dim]  Writing: Chapter {chapter.index} — {chapter.title}[/dim]")
     logger.info(f"Writing technical documentation for Chapter {chapter.index}: {chapter.title}")
@@ -51,8 +52,8 @@ def run(state: dict) -> dict:
     document_context = _build_document_context(fetched_documents)
     llm = get_llm(model=DEFAULT_MODEL, temperature=TEMP_WRITING)
 
-    # Truncate segment to a safe 8000 characters to keep inside tokens
-    segment = chapter.transcript_segment[:8000]
+    # Port fallback transcript slice logic (working_transcript[:4000]) if chapter transcript segment is empty
+    segment = chapter.transcript_segment[:8000] if chapter.transcript_segment else working_transcript[:4000]
 
     prompt = SECTION_WRITER_PROMPT.format(
         video_title=video_title,

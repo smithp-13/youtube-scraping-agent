@@ -12,7 +12,7 @@ console = Console()
 CHUNK_SIZE = 4500  # GoogleTranslator character limit per request
 
 
-def _translate_in_chunks(text: str, source_lang: str) -> str:
+def _translate_in_chunks(text: str, source_lang: str) -> tuple[str, list[str]]:
     """Translate long text in chunks to prevent API character limits."""
     words = text.split()
     chunks = []
@@ -34,6 +34,7 @@ def _translate_in_chunks(text: str, source_lang: str) -> str:
     logger.debug(f"Splitting translation into {len(chunks)} chunks.")
     translator = GoogleTranslator(source=source_lang, target="en")
     translated_chunks = []
+    errors = []
     
     for i, chunk in enumerate(chunks):
         try:
@@ -42,9 +43,10 @@ def _translate_in_chunks(text: str, source_lang: str) -> str:
         except Exception as e:
             logger.warning(f"Translation failed for chunk {i+1}: {e}. Retaining original text.")
             console.print(f"[yellow]⚠ Translation chunk {i+1} failed — using original[/yellow]")
+            errors.append(f"[language] Translation chunk {i+1} failed: {e}")
             translated_chunks.append(chunk)
 
-    return " ".join(translated_chunks)
+    return " ".join(translated_chunks), errors
 
 
 def run(state: GraphState) -> dict:
@@ -53,6 +55,8 @@ def run(state: GraphState) -> dict:
     logger.info("Running Agent: Language Detection")
 
     transcript = state.get("cleaned_transcript", "")
+    error_messages = []
+
     if not transcript:
         logger.info("Empty transcript. Skipping translation/detection.")
         return {
@@ -70,6 +74,7 @@ def run(state: GraphState) -> dict:
             detected = detect(transcript[:1000])
         except LangDetectException as e:
             logger.warning(f"langdetect failed: {e}. Defaulting to 'en'.")
+            error_messages.append(f"[language] langdetect failed: {e} — assuming English.")
             detected = "en"
 
     console.print(f"[green]✓ Spoken language detected: {detected.upper()}[/green]")
@@ -79,6 +84,7 @@ def run(state: GraphState) -> dict:
         return {
             "detected_language": "en",
             "working_transcript": transcript,
+            "error_messages": error_messages,
             "current_step": "language_done",
         }
 
@@ -86,11 +92,13 @@ def run(state: GraphState) -> dict:
     console.print(f"[yellow]Translating transcript from '{detected}' to English...[/yellow]")
     logger.info(f"Translating non-English transcript ({detected}) to English.")
     
-    translated = _translate_in_chunks(transcript, detected)
+    translated, chunk_errors = _translate_in_chunks(transcript, detected)
+    error_messages.extend(chunk_errors)
     console.print("[green]✓ Transcript translation complete[/green]")
     
     return {
         "detected_language": detected,
         "working_transcript": translated,
+        "error_messages": error_messages,
         "current_step": "language_done",
     }
