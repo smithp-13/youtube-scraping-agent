@@ -53,6 +53,7 @@ TEMP_WRITING = float(os.getenv("TEMP_WRITING", "0.7"))
 WHISPER_MODEL_SIZE = os.getenv("WHISPER_MODEL_SIZE", "base")
 WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")
 WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
+WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", "").strip()
 
 # ═══════════════════════════════════════════════════════════════════════
 # 6. PATHS & STORAGE
