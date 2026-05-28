@@ -8,7 +8,7 @@ from yt_doc_agent.core.state import GraphState, Chapter
 from yt_doc_agent.tools.youtube import seconds_to_timestamp
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry, parse_llm_json
 from yt_doc_agent.core.config import DEFAULT_MODEL, TEMP_STRUCTURED, MAX_CHAPTERS
-from yt_doc_agent.prompts.chapter_architect import CHAPTER_ARCHITECT_PROMPT
+from yt_doc_agent.core.prompt_loader import prompt_loader
 
 console = Console()
 
@@ -106,16 +106,16 @@ def run(state: GraphState) -> dict:
     # Truncate transcript excerpt to stay within the model's comfortable reasoning context
     ts_transcript = ts_transcript[:12000]
 
-    prompt = CHAPTER_ARCHITECT_PROMPT.format(
-        video_title=state.get("video_title", ""),
-        duration=duration,
-        transcript_with_timestamps=ts_transcript,
-        max_chapters=MAX_CHAPTERS,
-    )
+    prompt_str, prompt_obj = prompt_loader.get_prompt("chapter_architect", {
+        "video_title": state.get("video_title", ""),
+        "duration": duration,
+        "transcript_with_timestamps": ts_transcript,
+        "max_chapters": str(MAX_CHAPTERS),
+    })
 
     llm = get_llm(model=DEFAULT_MODEL, temperature=TEMP_STRUCTURED)
     try:
-        response = llm_call_with_retry(llm, prompt)
+        response = llm_call_with_retry(llm, prompt_str, prompt_obj=prompt_obj)
         raw_chapters = parse_llm_json(response)
         
         chapters = []

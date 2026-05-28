@@ -12,6 +12,7 @@ from yt_doc_agent.core.config import (
     WHISPER_DEVICE,
     WHISPER_COMPUTE_TYPE,
     WHISPER_DOWNLOAD_TIMEOUT,
+    WHISPER_MODEL_DIR,
 )
 
 
@@ -82,10 +83,19 @@ def transcribe_audio(wav_path: str, model_size: str = WHISPER_MODEL_SIZE) -> Tup
         segments_list: list of {"text": str, "start": float, "duration": float}
         detected_language: ISO 639-1 language code (e.g., 'en')
     """
-    logger.info(f"Loading Whisper model '{model_size}' on '{WHISPER_DEVICE}' (type: {WHISPER_COMPUTE_TYPE})...")
+    model_size_or_path = model_size
+    if WHISPER_MODEL_DIR:
+        local_path = os.path.join(WHISPER_MODEL_DIR, f"faster-whisper-{model_size}")
+        if os.path.exists(local_path):
+            model_size_or_path = local_path
+            logger.info(f"Loading local Whisper model from: {model_size_or_path}")
+        else:
+            logger.warning(f"WHISPER_MODEL_DIR is configured, but local path '{local_path}' does not exist. Falling back to default Hugging Face cache.")
+
+    logger.info(f"Loading Whisper model '{model_size_or_path}' on '{WHISPER_DEVICE}' (type: {WHISPER_COMPUTE_TYPE})...")
     try:
         model = WhisperModel(
-            model_size,
+            model_size_or_path,
             device=WHISPER_DEVICE,
             compute_type=WHISPER_COMPUTE_TYPE
         )
