@@ -8,7 +8,7 @@ from rich.console import Console
 from yt_doc_agent.core.state import GraphState
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry, parse_llm_json
 from yt_doc_agent.core.config import FAST_MODEL, TEMP_STRUCTURED
-from yt_doc_agent.prompts.description_parser import DESCRIPTION_PARSER_PROMPT
+from yt_doc_agent.core.prompt_loader import prompt_loader
 
 console = Console()
 
@@ -78,12 +78,15 @@ def run(state: GraphState) -> dict:
     console.print(f"[yellow]Classifying {len(unique_urls)} URLs via LLM...[/yellow]")
     url_list_str = "\n".join(unique_urls)
     
-    prompt = DESCRIPTION_PARSER_PROMPT.format(url_list=url_list_str)
-    llm = get_llm(model=FAST_MODEL, temperature=TEMP_STRUCTURED)
+    prompt_str, prompt_obj = prompt_loader.get_prompt("description_parser", {
+        "url_list": url_list_str
+    })
+
+    llm = get_llm(model=DEFAULT_MODEL, temperature=TEMP_STRUCTURED)
 
     try:
-        response = llm_call_with_retry(llm, prompt)
-        classified = parse_llm_json(response)
+        response_text = llm_call_with_retry(llm, prompt_str, prompt_obj=prompt_obj)
+        classified = parse_llm_json(response_text)
         
         console.print(f"[green]✓ Classified {len(classified)} links[/green]")
         for item in classified:

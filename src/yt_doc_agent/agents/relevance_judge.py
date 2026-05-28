@@ -7,7 +7,7 @@ from rich.console import Console
 from yt_doc_agent.core.state import GraphState, DocumentScore
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry, parse_llm_json
 from yt_doc_agent.core.config import DEFAULT_MODEL, TEMP_STRUCTURED
-from yt_doc_agent.prompts.relevance_judge import RELEVANCE_JUDGE_PROMPT
+from yt_doc_agent.core.prompt_loader import prompt_loader
 
 console = Console()
 
@@ -40,15 +40,15 @@ def run(state: GraphState) -> dict:
         console.print(f"[dim]Judging relevance for: {doc.title[:50]} ({doc.doc_type.upper()})[/dim]")
         logger.info(f"Judging document: {doc.title}")
         
-        prompt = RELEVANCE_JUDGE_PROMPT.format(
-            transcript_excerpt=transcript_excerpt,
-            doc_title=doc.title,
-            doc_type=doc.doc_type,
-            doc_content=doc.content_text[:4000],  # excerpt to respect token windows
-        )
+        prompt_str, prompt_obj = prompt_loader.get_prompt("relevance_judge", {
+            "transcript_excerpt": transcript_excerpt,
+            "doc_title": doc.title,
+            "doc_type": doc.doc_type,
+            "doc_content": doc.content_text[:4000],
+        })
 
         try:
-            response = llm_call_with_retry(llm, prompt)
+            response = llm_call_with_retry(llm, prompt_str, prompt_obj=prompt_obj)
             scores = parse_llm_json(response)
             
             # Populate scores

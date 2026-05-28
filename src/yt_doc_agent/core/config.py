@@ -53,6 +53,7 @@ TEMP_WRITING = float(os.getenv("TEMP_WRITING", "0.7"))
 WHISPER_MODEL_SIZE = os.getenv("WHISPER_MODEL_SIZE", "base")
 WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")
 WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
+WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", "").strip()
 
 # ═══════════════════════════════════════════════════════════════════════
 # 6. PATHS & STORAGE
@@ -75,6 +76,14 @@ MAX_DOC_FETCH_CHARS = int(os.getenv("MAX_DOC_FETCH_CHARS", "50000"))
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
 YTDLP_TIMEOUT = int(os.getenv("YTDLP_TIMEOUT", "60"))
 WHISPER_DOWNLOAD_TIMEOUT = int(os.getenv("WHISPER_DOWNLOAD_TIMEOUT", "300"))
+
+# ═══════════════════════════════════════════════════════════════════════
+# 8. LANGFUSE PROMPT MANAGEMENT
+# ═══════════════════════════════════════════════════════════════════════
+LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
+LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
+LANGFUSE_BASE_URL = os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com")
+LANGFUSE_CACHE_TTL_SECONDS = int(os.getenv("LANGFUSE_CACHE_TTL_SECONDS", "0"))
 
 
 def validate_config() -> list[str]:
@@ -99,5 +108,13 @@ def validate_config() -> list[str]:
 
     if not os.path.exists(GOOGLE_DRIVE_CREDENTIALS):
         issues.append("[INFO] Google Drive credentials not found — Google Drive/Docs fetching disabled.")
+
+    if not (LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY):
+        issues.append(
+            "[WARN] LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY missing — "
+            "prompts will fall back to local. Check LANGFUSE_BASE_URL too."
+        )
+    else:
+        issues.append("[INFO] Langfuse prompt management is configured.")
 
     return issues

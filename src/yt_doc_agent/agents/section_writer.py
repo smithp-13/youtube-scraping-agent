@@ -7,7 +7,7 @@ from rich.console import Console
 from yt_doc_agent.core.state import SectionOutput
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry
 from yt_doc_agent.core.config import DEFAULT_MODEL, TEMP_WRITING, MIN_SECTION_WORDS
-from yt_doc_agent.prompts.section_writer import SECTION_WRITER_PROMPT
+from yt_doc_agent.core.prompt_loader import prompt_loader
 
 console = Console()
 
@@ -55,19 +55,19 @@ def run(state: dict) -> dict:
     # Port fallback transcript slice logic (working_transcript[:4000]) if chapter transcript segment is empty
     segment = chapter.transcript_segment[:8000] if chapter.transcript_segment else working_transcript[:4000]
 
-    prompt = SECTION_WRITER_PROMPT.format(
-        video_title=video_title,
-        chapter_index=chapter.index,
-        chapter_title=chapter.title,
-        start_timestamp=chapter.start_timestamp,
-        end_timestamp=chapter.end_timestamp,
-        transcript_segment=segment,
-        document_context=document_context,
-        min_words=MIN_SECTION_WORDS,
-    )
+    prompt_str, prompt_obj = prompt_loader.get_prompt("section_writer", {
+        "video_title": video_title,
+        "chapter_index": str(chapter.index),
+        "chapter_title": chapter.title,
+        "start_timestamp": chapter.start_timestamp,
+        "end_timestamp": chapter.end_timestamp,
+        "transcript_segment": segment,
+        "document_context": document_context,
+        "min_words": str(MIN_SECTION_WORDS),
+    })
 
     try:
-        markdown_content = llm_call_with_retry(llm, prompt)
+        markdown_content = llm_call_with_retry(llm, prompt_str, prompt_obj=prompt_obj)
         
         # Ensure it actually starts with a proper markdown title
         if not markdown_content.strip().startswith(f"## {chapter.index}."):

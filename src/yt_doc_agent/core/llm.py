@@ -14,8 +14,24 @@ from yt_doc_agent.core.config import (
     TEMP_STRUCTURED,
     MAX_RETRY_ATTEMPTS,
     RETRY_WAIT_SECONDS,
+    LANGFUSE_PUBLIC_KEY,
+    LANGFUSE_SECRET_KEY,
+    LANGFUSE_BASE_URL,
 )
 from yt_doc_agent.core.exceptions import LLMCallError
+
+# Initialize global tracer if Langfuse is configured
+_tracer = None
+if LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY:
+    try:
+        from langfuse import Langfuse
+        _tracer = Langfuse(
+            public_key=LANGFUSE_PUBLIC_KEY,
+            secret_key=LANGFUSE_SECRET_KEY,
+            host=LANGFUSE_BASE_URL,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to initialize Langfuse tracer in llm.py: {e}")
 
 
 def get_llm(model: Optional[str] = None, temperature: Optional[float] = None) -> ChatGoogleGenerativeAI:
@@ -40,26 +56,51 @@ def get_llm(model: Optional[str] = None, temperature: Optional[float] = None) ->
     )
 
 
-def llm_call_with_retry(llm: ChatGoogleGenerativeAI, prompt: str, max_retries: int = MAX_RETRY_ATTEMPTS) -> str:
+def llm_call_with_retry(
+    llm: ChatGoogleGenerativeAI, 
+    prompt: str, 
+    prompt_obj: Optional[Any] = None,
+    max_retries: int = MAX_RETRY_ATTEMPTS
+) -> str:
     """
     Invoke the LLM with exponential backoff retry logic.
     
     Args:
         llm: ChatGoogleGenerativeAI instance
         prompt: The input prompt/message string or list of messages
+        prompt_obj: The Langfuse prompt object (if any) to link this call to a prompt version
         max_retries: Number of retries on failure (default: config.MAX_RETRY_ATTEMPTS)
     """
     attempt = 0
     wait_time = RETRY_WAIT_SECONDS
 
+    # Create a Langfuse generation if tracer is available
+    generation = None
+    if _tracer and prompt_obj:
+        generation = _tracer.generation(
+            name="llm-call",
+            input=prompt,
+            model=getattr(llm, "model", "unknown"),
+            prompt=prompt_obj,
+        )
+
     while attempt <= max_retries:
         try:
             logger.debug(f"Invoking LLM (attempt {attempt + 1}/{max_retries + 1})")
             response = llm.invoke(prompt)
-            return str(response.content)
+            result = str(response.content)
+            if generation:
+                generation.end(output=result)
+            if _tracer:
+                _tracer.flush()
+            return result
         except Exception as e:
             attempt += 1
             if attempt > max_retries:
+                if generation:
+                    generation.end(level="ERROR", status_message=str(e))
+                if _tracer:
+                    _tracer.flush()
                 logger.error(f"LLM call failed after {max_retries} retries: {e}")
                 raise LLMCallError(f"LLM call failed after multiple attempts: {e}") from e
             
