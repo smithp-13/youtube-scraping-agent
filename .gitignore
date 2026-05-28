@@ -219,3 +219,6 @@ __marimo__/
 graphify-out/
 .agents/
 credentials/
+
+#Model data
+data/models/whisper/

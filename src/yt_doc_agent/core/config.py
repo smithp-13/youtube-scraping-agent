@@ -76,6 +76,18 @@ REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
 YTDLP_TIMEOUT = int(os.getenv("YTDLP_TIMEOUT", "60"))
 WHISPER_DOWNLOAD_TIMEOUT = int(os.getenv("WHISPER_DOWNLOAD_TIMEOUT", "300"))
 
+# ═══════════════════════════════════════════════════════════════════════
+# 8. REACT AGENT CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════
+REACT_MAX_ITERATIONS: int = int(os.getenv("REACT_MAX_ITERATIONS", "20"))
+REACT_ENABLE_WEB_SEARCH: bool = os.getenv("REACT_ENABLE_WEB_SEARCH", "true").lower() == "true"
+REACT_SEARCH_PROVIDER: str = os.getenv("REACT_SEARCH_PROVIDER", "duckduckgo")  # "duckduckgo" | "google"
+GOOGLE_CSE_ID: str = os.getenv("GOOGLE_CSE_ID", "")
+
+# Section writer tool config
+SECTION_WRITER_ENABLE_TOOLS: bool = os.getenv("SECTION_WRITER_ENABLE_TOOLS", "true").lower() == "true"
+SECTION_WRITER_MAX_TOOL_CALLS: int = int(os.getenv("SECTION_WRITER_MAX_TOOL_CALLS", "5"))
+
 
 def validate_config() -> list[str]:
     """

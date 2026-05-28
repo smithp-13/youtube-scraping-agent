@@ -9,6 +9,10 @@ dependencies = [
     "langchain>=0.3.0",
     "langgraph>=0.2.0",
     "langchain-google-genai>=2.0.0",
+    # ReAct Agent Tools
+    "langchain-community>=0.3.0",
+    "langchain-google-community>=2.0.0",
+    "duckduckgo-search>=6.0.0",
     # YouTube & Media
     "youtube-transcript-api>=0.6.2",
     "yt-dlp>=2024.1.1",

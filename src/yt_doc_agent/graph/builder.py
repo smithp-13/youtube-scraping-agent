@@ -16,9 +16,7 @@ from yt_doc_agent.agents import (
     ingestion,
     transcript,
     language,
-    description_parser,
-    document_fetcher,
-    relevance_judge,
+    research_agent,
     chapter_architect,
     section_writer,
     assembler,
@@ -34,11 +32,6 @@ def _route_cache(state: GraphState) -> str:
 def _route_url(state: GraphState) -> str:
     """Route after url_resolver: playlist needs selection step."""
     return "playlist_handler" if state.get("is_playlist") else "ingestion"
-
-
-def _route_description(state: GraphState) -> str:
-    """Route after description_parser: skip doc pipeline when no links found."""
-    return "chapter_architect" if state.get("skip_document_pipeline") else "document_fetcher"
 
 
 def map_chapters(state: GraphState) -> list[Send]:
@@ -73,11 +66,10 @@ def build_graph() -> CompiledStateGraph:
       1.  cache_check: HIT -> END, MISS -> url_resolver
       2.  url_resolver: PLAYLIST -> playlist_handler, SINGLE -> ingestion
       3.  playlist_handler -> ingestion (always)
-      4.  ingestion -> transcript -> language -> description_parser
-      5.  description_parser: HAS_LINKS -> document_fetcher, NO_LINKS -> chapter_architect
-      6.  document_fetcher -> relevance_judge -> chapter_architect
-      7.  chapter_architect --(map_chapters via Send)--> section_writer (parallel workers)
-      8.  section_writer -> assembler -> cache_writer -> END
+      4.  ingestion -> transcript -> language -> research_agent
+      5.  research_agent (ReAct) -> chapter_architect
+      6.  chapter_architect --(map_chapters via Send)--> section_writer (parallel workers)
+      7.  section_writer -> assembler -> cache_writer -> END
     """
     logger.info("Initializing StateGraph builder...")
 
@@ -90,9 +82,7 @@ def build_graph() -> CompiledStateGraph:
     workflow.add_node("ingestion", ingestion.run)
     workflow.add_node("transcript", transcript.run)
     workflow.add_node("language", language.run)
-    workflow.add_node("description_parser", description_parser.run)
-    workflow.add_node("document_fetcher", document_fetcher.run)
-    workflow.add_node("relevance_judge", relevance_judge.run)
+    workflow.add_node("research_agent", research_agent.run)
     workflow.add_node("chapter_architect", chapter_architect.run)
     workflow.add_node("section_writer", section_writer.run)
     workflow.add_node("assembler", assembler.run)
@@ -129,23 +119,12 @@ def build_graph() -> CompiledStateGraph:
     # 4. Ingestion sequence (linear flow)
     workflow.add_edge("ingestion", "transcript")
     workflow.add_edge("transcript", "language")
-    workflow.add_edge("language", "description_parser")
+    workflow.add_edge("language", "research_agent")
 
-    # 5. description_parser -> skip document fetcher if no docs, otherwise fetcher
-    workflow.add_conditional_edges(
-        "description_parser",
-        _route_description,
-        {
-            "document_fetcher": "document_fetcher",
-            "chapter_architect": "chapter_architect",
-        },
-    )
+    # 5. Research agent (ReAct) always flows to chapter architect
+    workflow.add_edge("research_agent", "chapter_architect")
 
-    # 6. Document pipeline links back to chapter architect
-    workflow.add_edge("document_fetcher", "relevance_judge")
-    workflow.add_edge("relevance_judge", "chapter_architect")
-
-    # 7. Chapter parallel execution (Map-Reduce)
+    # 6. Chapter parallel execution (Map-Reduce)
     workflow.add_conditional_edges(
         "chapter_architect",
         map_chapters,
