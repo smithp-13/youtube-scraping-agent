@@ -7,7 +7,7 @@ from loguru import logger
 from rich.console import Console
 from yt_doc_agent.core.state import GraphState
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry, parse_llm_json
-from yt_doc_agent.core.config import FAST_MODEL, TEMP_STRUCTURED
+from yt_doc_agent.core.config import DEFAULT_MODEL, TEMP_STRUCTURED
 from yt_doc_agent.core.prompt_loader import prompt_loader
 
 console = Console()
