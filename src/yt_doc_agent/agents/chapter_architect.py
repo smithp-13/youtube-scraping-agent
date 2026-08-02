@@ -7,7 +7,8 @@ from rich.console import Console
 from yt_doc_agent.core.state import GraphState, Chapter
 from yt_doc_agent.tools.youtube import seconds_to_timestamp
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry, parse_llm_json
-from yt_doc_agent.core.config import DEFAULT_MODEL, TEMP_STRUCTURED, MAX_CHAPTERS
+from yt_doc_agent.core import config
+from yt_doc_agent.core.config import TEMP_STRUCTURED, MAX_CHAPTERS
 from yt_doc_agent.core.prompt_loader import prompt_loader
 
 console = Console()
@@ -113,7 +114,7 @@ def run(state: GraphState) -> dict:
         "max_chapters": str(MAX_CHAPTERS),
     })
 
-    llm = get_llm(model=DEFAULT_MODEL, temperature=TEMP_STRUCTURED)
+    llm = get_llm(model=config.DEFAULT_MODEL, temperature=TEMP_STRUCTURED)
     try:
         response = llm_call_with_retry(llm, prompt_str, prompt_obj=prompt_obj)
         raw_chapters = parse_llm_json(response)

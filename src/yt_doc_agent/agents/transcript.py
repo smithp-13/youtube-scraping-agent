@@ -8,7 +8,8 @@ from yt_doc_agent.core.state import GraphState
 from yt_doc_agent.tools.youtube import get_transcript
 from yt_doc_agent.tools.whisper import download_audio, transcribe_audio, cleanup_audio
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry
-from yt_doc_agent.core.config import FAST_MODEL, TEMP_STRUCTURED
+from yt_doc_agent.core import config
+from yt_doc_agent.core.config import TEMP_STRUCTURED
 
 console = Console()
 
@@ -68,7 +69,7 @@ def run(state: GraphState) -> dict:
             console.print("[dim]Auto-generated transcript detected (low punctuation) — adding punctuation...[/dim]")
             logger.info("Auto-generated transcript detected. Running punctuation cleanup pass.")
             
-            llm = get_llm(model=FAST_MODEL, temperature=TEMP_STRUCTURED)
+            llm = get_llm(model=config.FAST_MODEL, temperature=TEMP_STRUCTURED)
             cleaned = _punctuate_transcript(raw_text, llm)
         else:
             logger.info("Transcript already punctuated or too short to warrant pass.")

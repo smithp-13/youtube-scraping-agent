@@ -6,7 +6,8 @@ from loguru import logger
 from rich.console import Console
 from yt_doc_agent.core.state import GraphState, DocumentScore
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry, parse_llm_json
-from yt_doc_agent.core.config import DEFAULT_MODEL, TEMP_STRUCTURED
+from yt_doc_agent.core import config
+from yt_doc_agent.core.config import TEMP_STRUCTURED
 from yt_doc_agent.core.prompt_loader import prompt_loader
 
 console = Console()
@@ -28,7 +29,7 @@ def run(state: GraphState) -> dict:
 
     # Extract a representative excerpt from the beginning of our clean transcript for evaluation
     transcript_excerpt = state.get("working_transcript", "")[:6000]
-    llm = get_llm(model=DEFAULT_MODEL, temperature=TEMP_STRUCTURED)
+    llm = get_llm(model=config.DEFAULT_MODEL, temperature=TEMP_STRUCTURED)
 
     scored_docs = []
     for doc in docs:

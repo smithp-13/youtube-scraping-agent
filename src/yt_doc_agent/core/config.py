@@ -111,8 +111,9 @@ def validate_config() -> list[str]:
 
     if not (LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY):
         issues.append(
-            "[WARN] LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY missing — "
-            "prompts will fall back to local. Check LANGFUSE_BASE_URL too."
+            "[CRITICAL] LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY missing — "
+            "prompts cannot be loaded (no local fallback) and the pipeline will fail "
+            "on the first LLM step. Check LANGFUSE_BASE_URL too."
         )
     else:
         issues.append("[INFO] Langfuse prompt management is configured.")

@@ -4,8 +4,9 @@ Filesystem Utility Functions — manages file saving, sanitization, and output d
 
 import os
 import re
+from typing import Optional
 from loguru import logger
-from yt_doc_agent.core.config import OUTPUTS_DIR
+from yt_doc_agent.core import config
 
 
 def sanitize_filename(title: str, max_length: int = 100) -> str:
@@ -34,14 +35,17 @@ def sanitize_filename(title: str, max_length: int = 100) -> str:
     return cleaned if cleaned else "untitled_document"
 
 
-def write_markdown(content: str, video_title: str, output_dir: str = OUTPUTS_DIR) -> str:
+def write_markdown(content: str, video_title: str, output_dir: Optional[str] = None) -> str:
     """
     Write generated markdown content to a safe file path.
     Handles filename sanitization and naming collisions (appends _v2, _v3, etc.).
-    
+
     Returns:
         The absolute path to the written file.
     """
+    # Resolved at call time so CLI overrides (--output) are honoured
+    output_dir = output_dir or config.OUTPUTS_DIR
+
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
     

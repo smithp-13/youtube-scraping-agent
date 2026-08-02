@@ -6,7 +6,8 @@ from loguru import logger
 from rich.console import Console
 from yt_doc_agent.core.state import SectionOutput
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry
-from yt_doc_agent.core.config import DEFAULT_MODEL, TEMP_WRITING, MIN_SECTION_WORDS
+from yt_doc_agent.core import config
+from yt_doc_agent.core.config import TEMP_WRITING, MIN_SECTION_WORDS
 from yt_doc_agent.core.prompt_loader import prompt_loader
 
 console = Console()
@@ -50,7 +51,7 @@ def run(state: dict) -> dict:
     logger.info(f"Writing technical documentation for Chapter {chapter.index}: {chapter.title}")
 
     document_context = _build_document_context(fetched_documents)
-    llm = get_llm(model=DEFAULT_MODEL, temperature=TEMP_WRITING)
+    llm = get_llm(model=config.DEFAULT_MODEL, temperature=TEMP_WRITING)
 
     # Port fallback transcript slice logic (working_transcript[:4000]) if chapter transcript segment is empty
     segment = chapter.transcript_segment[:8000] if chapter.transcript_segment else working_transcript[:4000]

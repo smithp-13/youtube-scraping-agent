@@ -8,7 +8,8 @@ from rich.console import Console
 from yt_doc_agent.core.state import GraphState
 from yt_doc_agent.tools.filesystem import write_markdown
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry
-from yt_doc_agent.core.config import DEFAULT_MODEL, TEMP_WRITING
+from yt_doc_agent.core import config
+from yt_doc_agent.core.config import TEMP_WRITING
 
 console = Console()
 
@@ -118,7 +119,7 @@ def run(state: GraphState) -> dict:
     console.print("\n[bold cyan]▶ Step 12/13: Document Assembler[/bold cyan]")
     logger.info("Running Agent: Document Assembler")
 
-    llm = get_llm(model=DEFAULT_MODEL, temperature=TEMP_WRITING)
+    llm = get_llm(model=config.DEFAULT_MODEL, temperature=TEMP_WRITING)
     
     # Prepend translation footnote if required
     lang_note = ""
