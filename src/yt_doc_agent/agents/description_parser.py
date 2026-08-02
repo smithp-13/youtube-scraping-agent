@@ -7,7 +7,8 @@ from loguru import logger
 from rich.console import Console
 from yt_doc_agent.core.state import GraphState
 from yt_doc_agent.core.llm import get_llm, llm_call_with_retry, parse_llm_json
-from yt_doc_agent.core.config import DEFAULT_MODEL, TEMP_STRUCTURED
+from yt_doc_agent.core import config
+from yt_doc_agent.core.config import TEMP_STRUCTURED
 from yt_doc_agent.core.prompt_loader import prompt_loader
 
 console = Console()
@@ -82,7 +83,7 @@ def run(state: GraphState) -> dict:
         "url_list": url_list_str
     })
 
-    llm = get_llm(model=DEFAULT_MODEL, temperature=TEMP_STRUCTURED)
+    llm = get_llm(model=config.DEFAULT_MODEL, temperature=TEMP_STRUCTURED)
 
     try:
         response_text = llm_call_with_retry(llm, prompt_str, prompt_obj=prompt_obj)
