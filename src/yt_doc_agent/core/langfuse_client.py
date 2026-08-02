@@ -7,8 +7,11 @@ connection instead of each opening its own.
 """
 
 import atexit
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from loguru import logger
+
+if TYPE_CHECKING:
+    from langfuse import Langfuse
 
 from yt_doc_agent.core.config import (
     LANGFUSE_PUBLIC_KEY,
