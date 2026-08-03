@@ -14,24 +14,12 @@ from yt_doc_agent.core.config import (
     TEMP_STRUCTURED,
     MAX_RETRY_ATTEMPTS,
     RETRY_WAIT_SECONDS,
-    LANGFUSE_PUBLIC_KEY,
-    LANGFUSE_SECRET_KEY,
-    LANGFUSE_BASE_URL,
 )
 from yt_doc_agent.core.exceptions import LLMCallError
+from yt_doc_agent.core.langfuse_client import get_langfuse_client
 
-# Initialize global tracer if Langfuse is configured
-_tracer = None
-if LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY:
-    try:
-        from langfuse import Langfuse
-        _tracer = Langfuse(
-            public_key=LANGFUSE_PUBLIC_KEY,
-            secret_key=LANGFUSE_SECRET_KEY,
-            host=LANGFUSE_BASE_URL,
-        )
-    except Exception as e:
-        logger.warning(f"Failed to initialize Langfuse tracer in llm.py: {e}")
+# Shared Langfuse tracer (None if Langfuse is not configured)
+_tracer = get_langfuse_client()
 
 
 def get_llm(model: Optional[str] = None, temperature: Optional[float] = None) -> ChatGoogleGenerativeAI:
@@ -77,8 +65,9 @@ def llm_call_with_retry(
     # Create a Langfuse generation if tracer is available
     generation = None
     if _tracer and prompt_obj:
-        generation = _tracer.generation(
+        generation = _tracer.start_observation(
             name="llm-call",
+            as_type="generation",
             input=prompt,
             model=getattr(llm, "model", "unknown"),
             prompt=prompt_obj,
@@ -90,17 +79,15 @@ def llm_call_with_retry(
             response = llm.invoke(prompt)
             result = str(response.content)
             if generation:
-                generation.end(output=result)
-            if _tracer:
-                _tracer.flush()
+                generation.update(output=result)
+                generation.end()
             return result
         except Exception as e:
             attempt += 1
             if attempt > max_retries:
                 if generation:
-                    generation.end(level="ERROR", status_message=str(e))
-                if _tracer:
-                    _tracer.flush()
+                    generation.update(level="ERROR", status_message=str(e))
+                    generation.end()
                 logger.error(f"LLM call failed after {max_retries} retries: {e}")
                 raise LLMCallError(f"LLM call failed after multiple attempts: {e}") from e
             

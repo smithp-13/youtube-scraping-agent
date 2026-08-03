@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 # Add src/ directory to python path to import our modules
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -21,7 +21,7 @@ from yt_doc_agent.core.config import (
 )
 
 # Read WHISPER_MODEL_DIR from env if set, otherwise default to HF cache
-WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR").strip()
+WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", "").strip()
 
 console = Console()
 

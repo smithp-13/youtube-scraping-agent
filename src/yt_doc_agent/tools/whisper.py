@@ -4,16 +4,11 @@ Whisper Utility Functions — downloads audio via yt-dlp and transcribes it loca
 
 import os
 import subprocess
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 from loguru import logger
 from faster_whisper import WhisperModel
-from yt_doc_agent.core.config import (
-    WHISPER_MODEL_SIZE,
-    WHISPER_DEVICE,
-    WHISPER_COMPUTE_TYPE,
-    WHISPER_DOWNLOAD_TIMEOUT,
-    WHISPER_MODEL_DIR,
-)
+from yt_doc_agent.core import config
+from yt_doc_agent.core.config import WHISPER_DOWNLOAD_TIMEOUT
 
 
 def download_audio(url: str, video_id: str) -> str:
@@ -74,30 +69,33 @@ def download_audio(url: str, video_id: str) -> str:
         raise RuntimeError(f"Failed to download audio: {e}") from e
 
 
-def transcribe_audio(wav_path: str, model_size: str = WHISPER_MODEL_SIZE) -> Tuple[List[Dict[str, Any]], str]:
+def transcribe_audio(wav_path: str, model_size: Optional[str] = None) -> Tuple[List[Dict[str, Any]], str]:
     """
     Transcribe a local WAV file using faster-whisper.
-    
+
     Returns:
         (segments_list, detected_language)
         segments_list: list of {"text": str, "start": float, "duration": float}
         detected_language: ISO 639-1 language code (e.g., 'en')
     """
+    # Resolved at call time so CLI overrides (--whisper-model) are honoured
+    model_size = model_size or config.WHISPER_MODEL_SIZE
+
     model_size_or_path = model_size
-    if WHISPER_MODEL_DIR:
-        local_path = os.path.join(WHISPER_MODEL_DIR, f"faster-whisper-{model_size}")
+    if config.WHISPER_MODEL_DIR:
+        local_path = os.path.join(config.WHISPER_MODEL_DIR, f"faster-whisper-{model_size}")
         if os.path.exists(local_path):
             model_size_or_path = local_path
             logger.info(f"Loading local Whisper model from: {model_size_or_path}")
         else:
             logger.warning(f"WHISPER_MODEL_DIR is configured, but local path '{local_path}' does not exist. Falling back to default Hugging Face cache.")
 
-    logger.info(f"Loading Whisper model '{model_size_or_path}' on '{WHISPER_DEVICE}' (type: {WHISPER_COMPUTE_TYPE})...")
+    logger.info(f"Loading Whisper model '{model_size_or_path}' on '{config.WHISPER_DEVICE}' (type: {config.WHISPER_COMPUTE_TYPE})...")
     try:
         model = WhisperModel(
             model_size_or_path,
-            device=WHISPER_DEVICE,
-            compute_type=WHISPER_COMPUTE_TYPE
+            device=config.WHISPER_DEVICE,
+            compute_type=config.WHISPER_COMPUTE_TYPE
         )
         
         logger.info(f"Transcribing audio file: {wav_path}")
